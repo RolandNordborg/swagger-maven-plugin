@@ -1,5 +1,7 @@
 package com.github.kongchen.swagger.docgen.reader;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.swagger.models.properties.StringProperty;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
@@ -22,6 +24,7 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.plugin.logging.Log;
 import org.reflections.Reflections;
 import org.slf4j.Logger;
@@ -351,7 +354,7 @@ public class JaxrsReader extends AbstractReader implements ClassSwaggerReader {
                             .headers(defaultResponseHeaders));
                 }
             } else if (!responseClassType.equals(Void.class) && !responseClassType.equals(void.class)) {
-                Map<String, Model> models = ModelConverters.getInstance().read(responseClassType);
+                Map<String, Model> models = readModels(responseClassType);
                 if (models.isEmpty()) {
                     Property p = ModelConverters.getInstance().readAsProperty(responseClassType);
                     operation.response(responseCode, new Response()
@@ -370,7 +373,7 @@ public class JaxrsReader extends AbstractReader implements ClassSwaggerReader {
                     swagger.model(key, models.get(key));
                 }
             }
-            Map<String, Model> models = ModelConverters.getInstance().readAll(responseClassType);
+            Map<String, Model> models = readAllModels(responseClassType);
             for (Map.Entry<String, Model> entry : models.entrySet()) {
                 swagger.model(entry.getKey(), entry.getValue());
             }
@@ -493,4 +496,35 @@ public class JaxrsReader extends AbstractReader implements ClassSwaggerReader {
     }
 
 
+    private Map<String, Model> readAllModels(Type responseClassType) {
+        Map<String, Model> modelMap = ModelConverters.getInstance().readAll(responseClassType);
+        if (modelMap != null) {
+            handleJsonTypeInfo(responseClassType, modelMap);
+        }
+
+        return modelMap;
+    }
+
+    private Map<String, Model> readModels(Type responseClassType) {
+        Map<String, Model> modelMap = ModelConverters.getInstance().read(responseClassType);
+        if (modelMap != null) {
+            handleJsonTypeInfo(responseClassType, modelMap);
+        }
+
+        return modelMap;
+    }
+
+    private void handleJsonTypeInfo(Type responseClassType, Map<String, Model> modelMap) {
+        if (responseClassType instanceof Class){
+            JsonTypeInfo typeInfo = ((Class<?>)responseClassType).getAnnotation(JsonTypeInfo.class);
+            if (typeInfo != null && !StringUtils.isEmpty(typeInfo.property())) {
+                for (Model model : modelMap.values()) {
+                    Map<String, Property> properties = model.getProperties();
+                    if (properties != null) {
+                        properties.put(typeInfo.property(), new StringProperty());
+                    }
+                }
+            }
+        }
+    }
 }

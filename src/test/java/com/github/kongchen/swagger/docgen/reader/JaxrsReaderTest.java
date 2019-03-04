@@ -5,13 +5,19 @@ import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.jaxrs.ext.SwaggerExtension;
 import io.swagger.jaxrs.ext.SwaggerExtensions;
+import io.swagger.models.Model;
 import io.swagger.models.Swagger;
 import io.swagger.models.Tag;
 import io.swagger.models.parameters.Parameter;
+import io.swagger.models.properties.Property;
+import java.util.Map;
 import org.apache.maven.plugin.logging.Log;
 
 import org.mockito.Mock;
@@ -86,6 +92,21 @@ public class JaxrsReaderTest {
         assertSwaggerResponseContents(expectedTag, result);
     }
 
+    @Test
+    public void handleResponseWithInheritance() {
+        Swagger result = reader.read(AnApiWithInheritance.class);
+        Map<String, Model> models = result.getDefinitions();
+
+        assertTrue(models.containsKey("SomeResponseWithInheritance"));
+
+        System.out.println(models.get("SomeResponseWithInheritance"));
+
+        Map<String, Property> properties = models.get("SomeResponseWithInheritance").getProperties();
+        assertTrue(properties.containsKey("classProperty"));
+        assertTrue(properties.containsKey("inheritedProperty"));
+        assertTrue(properties.containsKey("type"));
+    }
+
     private void assertEmptySwaggerResponse(Swagger result) {
         assertNotNull(result, "No Swagger object created");
         assertNull(result.getTags(), "Should not have any tags");
@@ -124,5 +145,31 @@ public class JaxrsReaderTest {
 
     @Path("/apath")
     static class NotAnnotatedApi {
+    }
+
+    @Api
+    @Path("/apath")
+    static class AnApiWithInheritance {
+        @GET
+        public SomeResponseWithInheritance getOperation() {
+            return new SomeResponseWithInheritance();
+        }
+    }
+
+    @JsonTypeInfo(use=Id.NAME, property="type")
+    static class SomeResponseWithInheritance extends SomeResponseBaseClass {
+        public String getClassProperty(){
+            return null;
+        }
+    }
+
+    @JsonTypeInfo(use=Id.NAME, property="type")
+    @JsonSubTypes({
+            @JsonSubTypes.Type(SomeResponseWithInheritance.class)
+    })
+    static class SomeResponseBaseClass {
+        public String getInheritedProperty(){
+            return null;
+        }
     }
 }
