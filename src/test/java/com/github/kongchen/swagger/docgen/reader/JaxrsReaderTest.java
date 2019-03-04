@@ -105,6 +105,10 @@ public class JaxrsReaderTest {
         assertTrue(properties.containsKey("classProperty"));
         assertTrue(properties.containsKey("inheritedProperty"));
         assertTrue(properties.containsKey("type"));
+
+        properties = models.get("SomeResponseBaseClass").getProperties();
+        assertTrue(properties.containsKey("inheritedProperty"));
+        assertTrue(properties.containsKey("type"));
     }
 
     private void assertEmptySwaggerResponse(Swagger result) {
@@ -154,6 +158,11 @@ public class JaxrsReaderTest {
         public SomeResponseWithInheritance getOperation() {
             return new SomeResponseWithInheritance();
         }
+
+        @GET
+        public SomeResponseBaseClass getOperation2() {
+            return new SomeResponseWithInheritance();
+        }
     }
 
     @JsonTypeInfo(use=Id.NAME, property="type")
@@ -167,7 +176,7 @@ public class JaxrsReaderTest {
     @JsonSubTypes({
             @JsonSubTypes.Type(SomeResponseWithInheritance.class)
     })
-    static class SomeResponseBaseClass {
+    static abstract class SomeResponseBaseClass {
         public String getInheritedProperty(){
             return null;
         }

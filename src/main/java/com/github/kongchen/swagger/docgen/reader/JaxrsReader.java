@@ -1,6 +1,7 @@
 package com.github.kongchen.swagger.docgen.reader;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import io.swagger.models.properties.StringProperty;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -517,12 +518,16 @@ public class JaxrsReader extends AbstractReader implements ClassSwaggerReader {
     private void handleJsonTypeInfo(Type responseClassType, Map<String, Model> modelMap) {
         if (responseClassType instanceof Class){
             JsonTypeInfo typeInfo = ((Class<?>)responseClassType).getAnnotation(JsonTypeInfo.class);
-            if (typeInfo != null && !StringUtils.isEmpty(typeInfo.property())) {
-                for (Model model : modelMap.values()) {
-                    Map<String, Property> properties = model.getProperties();
-                    if (properties != null) {
-                        properties.put(typeInfo.property(), new StringProperty());
-                    }
+            if (typeInfo == null || StringUtils.isEmpty(typeInfo.property())) {
+                return;
+            }
+
+            JsonTypeName typeName = ((Class<?>)responseClassType).getAnnotation(JsonTypeName.class);
+            String jsonName = typeName != null && !StringUtils.isEmpty(typeName.value()) ? typeName.value() : ((Class<?>) responseClassType).getSimpleName();
+            if (modelMap.containsKey(jsonName)) {
+                Map<String, Property> properties = modelMap.get(jsonName).getProperties();
+                if (properties != null) {
+                    properties.put(typeInfo.property(), new StringProperty());
                 }
             }
         }
